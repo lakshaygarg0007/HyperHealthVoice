@@ -1,3 +1,3 @@
 export * from "./neo4j";
 
-export * from "./llmModel";
+export * from "./generateEmbeddings";

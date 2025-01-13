@@ -1,25 +1,10 @@
 import { neo4j } from "@hypermode/modus-sdk-as"
 import { JSON } from "json-as"
-import { embed } from "./llmModel";
+import { embed } from "./generateEmbeddings";
 
-export * from "./llmModel";
+export * from "./generateEmbeddings";
 
-// This host name should match one defined in the modus.json manifest file.
 const hostName: string = "neo4j"
-
-@json
-class Person {
-  name: string
-  age: i32
-  friends: string[] | null
-
-  constructor(name: string, age: i32, friends: string[] | null = null) {
-    this.name = name
-    this.age = age
-    this.friends = friends
-  }
-}
-
 
 @json
 class Patient {
@@ -117,30 +102,25 @@ export function GetPatientsList(): Patient[] {
 
 
 export function GetReportsList(patientId: string): Reports[] {
-  // Set the variable for the query
   const vars = new neo4j.Variables();
-  vars.set("patientId", "123");
+  vars.set("patientId", patientId);
 
-  // Corrected query to ensure proper syntax
   const query = `
     MATCH (r:Report) 
-    WHERE r.patientId = 123 
+    WHERE r.patientId = $patientId 
     RETURN r
   `;
 
-  // Execute the query
-  const result = neo4j.executeQuery(hostName, query, vars); // Pass the variables correctly
+  const result = neo4j.executeQuery(hostName, query, vars);
 
   const reportNodes: Reports[] = [];
 
-  // Loop through the result records
   for (let i = 0; i < result.Records.length; i++) {
     const record = result.Records[i];
-    const node = record.getValue<neo4j.Node>("r"); // Use "r" since that's what the query returns
+    const node = record.getValue<neo4j.Node>("r");
 
-    // Create a new Reports instance using the node's properties
     const report = new Reports(
-      node.ElementId, // Assuming ElementId is a property of the node
+      node.ElementId,
       node.getProperty<string>("patientId"),
       node.getProperty<string>("reportTitle"),
       node.getProperty<string>("reportDate")
@@ -152,15 +132,6 @@ export function GetReportsList(patientId: string): Reports[] {
 }
 
 
-// assembly/index.ts
-export function processVoiceCommand(commandPtr: usize, length: i32): i32 {
-    const command = String.UTF8.decodeUnsafe(commandPtr, length);
-    if (command.includes("hello")) {
-      return 1; // Example: Return 1 if "hello" is recognized.
-    }
-    return 0; // Return 0 for unrecognized commands.
-  }
-  
   function getId(output: string): string {
     const idKey = '"Id":';
     const idStartIndex = output.indexOf(idKey) + idKey.length;
@@ -229,9 +200,9 @@ export function processVoiceCommand(commandPtr: usize, length: i32): i32 {
       `;
 
       const vars = new neo4j.Variables();
-      vars.set("reportId", reportId); // Changed from "id" to "patientId" to match the query
+      vars.set("reportId", reportId);
       vars.set("reportChunk", reportChunks[i]);
-      vars.set("embeddings", embeddings[0]); // Call Date.now() to get the current timestamp
+      vars.set("embeddings", embeddings[0]);
 
       const result = neo4j.executeQuery(hostName, query, vars);
     }
@@ -241,7 +212,7 @@ export function processVoiceCommand(commandPtr: usize, length: i32): i32 {
 
     neo4j.executeQuery(hostName, indexQuery);
 
-    return 'lllll'
+    return 'Success'
   }
   
 
@@ -253,7 +224,6 @@ export function processVoiceCommand(commandPtr: usize, length: i32): i32 {
     vars.set("queryEmbeddings", queryEmbeddings);
 
     
-  
     const searchQuery = `
     MATCH (e:Embedding)
     CALL db.index.vector.queryNodes('embedding-index',$nums , $queryEmbeddings)
@@ -270,9 +240,8 @@ export function processVoiceCommand(commandPtr: usize, length: i32): i32 {
 
     for (let i = 0; i < results.Records.length; i++) {
       const record = results.Records[i];
-      const node = record.getValue<neo4j.Node>("matchedChunk"); // Use "r" since that's what the query returns
+      const node = record.getValue<neo4j.Node>("matchedChunk");
   
-      // Create a new Reports instance using the node's properties
       const chunks = new SimliarChunks(
         node.getProperty<string>("reportChunk")
       );
